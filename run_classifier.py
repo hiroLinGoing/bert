@@ -71,6 +71,12 @@ flags.DEFINE_bool("do_train", False, "Whether to run training.")
 
 flags.DEFINE_bool("do_eval", False, "Whether to run eval on the dev set.")
 
+flags.DEFINE_bool("do_save", False, "save to path.")
+
+flags.DEFINE_string(
+    "export_model_dir", None,
+    "The output directory where the export model checkpoints will be written.")
+
 flags.DEFINE_bool(
     "do_predict", False,
     "Whether to run the model in inference mode on the test set.")
@@ -793,7 +799,7 @@ def main(_):
   tokenization.validate_case_matches_checkpoint(FLAGS.do_lower_case,
                                                 FLAGS.init_checkpoint)
 
-  if not FLAGS.do_train and not FLAGS.do_eval and not FLAGS.do_predict:
+  if not FLAGS.do_train and not FLAGS.do_eval and not FLAGS.do_predict and not FLAGS.do_save:
     raise ValueError(
         "At least one of `do_train`, `do_eval` or `do_predict' must be True.")
 
@@ -970,6 +976,25 @@ def main(_):
         writer.write(output_line)
         num_written_lines += 1
     assert num_written_lines == num_actual_predict_examples
+  if FLAGS.do_save:
+    # ------------------export model--------------------
+    def serving_input_receiver_fn():
+        """An input receiver that expects a serialized tf.Example."""
+        reciever_tensors = {
+            "input_ids": tf.placeholder(dtype=tf.int64,
+                                        shape=[None, 128])
+        }
+
+        features = {
+            "input_ids": reciever_tensors['input_ids'],
+            "input_mask": 1 - tf.cast(tf.equal(reciever_tensors['input_ids'], 0), dtype=tf.int64),
+            "segment_ids": tf.zeros_like(reciever_tensors['input_ids'], dtype=tf.int64),
+            'label_ids': tf.fill(tf.stack([tf.shape(reciever_tensors['input_ids'])[0], 1]), 0)
+        }
+        return tf.estimator.export.ServingInputReceiver(features, reciever_tensors)
+
+    estimator._export_to_tpu = False
+    estimator.export_savedmodel(FLAGS.export_model_dir, serving_input_receiver_fn)
 
 
 if __name__ == "__main__":
