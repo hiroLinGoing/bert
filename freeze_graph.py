@@ -166,7 +166,7 @@ def optimize_class_model(args, logger=None):
         pd_model_file = os.path.join(os.path.join(args.model_dir, args.pb_file_name), args.pb_version)
         if os.path.exists(pd_model_file):
             shutil.rmtree(pd_model_file)
-            os.makedirs(pd_model_file)
+        os.makedirs(pd_model_file)
         shutil.move(pb_file, pd_model_file)
         latest_checkpoint = tf.train.latest_checkpoint(args.model_dir)
         if latest_checkpoint == '':
@@ -177,7 +177,6 @@ def optimize_class_model(args, logger=None):
         os.makedirs(pd_variables_path)
         shutil.copy(data_path, os.path.join(pd_variables_path, "variables.data-00000-of-00001"))
         shutil.copy(index_path, os.path.join(pd_variables_path, "variables.index"))
-        logger.info('pb dir success!!! {}'.format(pd_model_file))
         return pd_model_file
     except Exception as e:
         logger.error('fail to optimize the graph! %s' % e, exc_info=True)
